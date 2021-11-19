@@ -14,6 +14,7 @@ GAME_OBJECT_DEFS = {
         width = 16,
         height = 16,
         solid = false,
+        consumable = false,
         defaultState = 'unpressed',
         states = {
             ['unpressed'] = {
@@ -24,7 +25,41 @@ GAME_OBJECT_DEFS = {
             }
         }
     },
+    ['heart'] = {
+        type = 'heart',
+        texture = 'hearts',
+        frame = 5,
+        width = 16,
+        height = 16,
+        solid = false,
+        consumable = true,
+        defaultState = 'idle',
+        states = {
+            ['idle'] = {
+                frame = 5
+            }
+        }
+    },
+
+
     ['pot'] = {
-        -- TODO
+        type = 'pot',
+        texture = 'pots',
+        frame = 1,
+        width = 16,
+        height = 16,
+        solid = true,
+        pickupable = true,
+        defaultState = 'intact',
+        states = {
+            ['intact'] = {
+                frame = 1
+            },
+            ['broken'] = {
+                frame = 7
+            }
+        }
     }
+
+
 }

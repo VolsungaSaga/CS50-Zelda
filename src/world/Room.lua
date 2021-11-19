@@ -8,10 +8,11 @@
 
 Room = Class{}
 
-function Room:init(player)
+function Room:init(player, dungeon)
     self.width = MAP_WIDTH
     self.height = MAP_HEIGHT
 
+    self.dungeon = dungeon 
     self.tiles = {}
     self:generateWallsAndFloors()
 
@@ -21,7 +22,11 @@ function Room:init(player)
 
     -- game objects in the room
     self.objects = {}
+    self.numberOfPots = math.random(3)
     self:generateObjects()
+
+    -- projectiles
+    self.projectiles = {}
 
     -- doorways that lead to other dungeon rooms
     self.doorways = {}
@@ -47,7 +52,7 @@ end
 ]]
 function Room:generateEntities()
     local types = {'skeleton', 'slime', 'bat', 'ghost', 'spider'}
-
+    print("This room's dungeon is ..."..tostring(self.dungeon))
     for i = 1, 10 do
         local type = types[math.random(#types)]
 
@@ -68,7 +73,7 @@ function Room:generateEntities()
         })
 
         self.entities[i].stateMachine = StateMachine {
-            ['walk'] = function() return EntityWalkState(self.entities[i]) end,
+            ['walk'] = function() return EntityWalkState(self.entities[i], self.dungeon) end,
             ['idle'] = function() return EntityIdleState(self.entities[i]) end
         }
 
@@ -89,7 +94,7 @@ function Room:generateObjects()
     )
 
     -- define a function for the switch that will open all doors in the room
-    switch.onCollide = function()
+    switch.onCollide = function(collider)
         if switch.state == 'unpressed' then
             switch.state = 'pressed'
             
@@ -104,8 +109,46 @@ function Room:generateObjects()
 
     -- add to list of objects in scene (only one switch for now)
     table.insert(self.objects, switch)
+
+
+    --Pot spawning
+
+    for i = 1, self.numberOfPots, 1 do
+        local spawnX = math.random(MAP_RENDER_OFFSET_X + TILE_SIZE,
+        VIRTUAL_WIDTH - TILE_SIZE * 2 - 16)    
+        local spawnY = math.random(MAP_RENDER_OFFSET_Y + TILE_SIZE,
+        VIRTUAL_HEIGHT - (VIRTUAL_HEIGHT - MAP_HEIGHT * TILE_SIZE) + MAP_RENDER_OFFSET_Y - TILE_SIZE - 16)
+        local pot = GameObject(
+            GAME_OBJECT_DEFS['pot'],
+            spawnX,
+            spawnY
+        )
+        --Entities are spawned before objects, so we know that self.entities is populated.
+        for k, entity in pairs(self.entities) do
+            if entity:collides(pot) then
+                entity:unstuck(pot)
+            end
+        end
+
+        table.insert(self.objects, pot)    
+    end
 end
 
+--[[
+ Spawn a heart at the specified location.
+]]
+function Room:spawnHeart(x,y)
+    --print("Spawned heart at x:"..tostring(x)..", y:"..tostring(y))
+    local heart = GameObject(GAME_OBJECT_DEFS['heart'], x, y)
+
+    heart.onConsume = function (consumer)
+        gSounds['heart-pickup']:play()
+        consumer.health = math.min(consumer.health + 2, 6)
+    end
+
+    table.insert(self.objects, heart)
+    
+end
 --[[
     Generates the walls and floors of the room, randomizing the various varieties
     of said tiles for visual variety.
@@ -151,14 +194,22 @@ function Room:update(dt)
     -- don't update anything if we are sliding to another room (we have offsets)
     if self.adjacentOffsetX ~= 0 or self.adjacentOffsetY ~= 0 then return end
 
+    -- clear the room of stale entities, objects, and such.
+
+
     self.player:update(dt)
+
+    for k, projectile in pairs(self.projectiles) do
+        projectile:update(dt)
+
+    end
 
     for i = #self.entities, 1, -1 do
         local entity = self.entities[i]
 
         -- remove entity from the table if health is <= 0
         if entity.health <= 0 then
-            entity.dead = true
+            entity:die({room = self})
         elseif not entity.dead then
             entity:processAI({room = self}, dt)
             entity:update(dt)
@@ -174,6 +225,15 @@ function Room:update(dt)
                 gStateMachine:change('game-over')
             end
         end
+
+        for j, projectile in pairs(self.projectiles) do
+            
+            if not entity.dead and projectile.expired == false and entity:collides(projectile) then
+                entity.health = entity.health - projectile.damage
+                projectile:destroy()
+            end 
+        
+        end
     end
 
     for k, object in pairs(self.objects) do
@@ -181,9 +241,22 @@ function Room:update(dt)
 
         -- trigger collision callback on object
         if self.player:collides(object) then
-            object:onCollide()
+            object:onCollide(self.player)
+
+            if object.solid then
+                -- Stop the player from moving into the object.
+                
+                
+            elseif object.consumable and not object.consumed then
+                object.onConsume(self.player)
+                object.consumed = true
+                --table.remove(self.objects, k)
+            end
+
         end
     end
+
+
 end
 
 function Room:render()
@@ -203,11 +276,15 @@ function Room:render()
     end
 
     for k, object in pairs(self.objects) do
-        object:render(self.adjacentOffsetX, self.adjacentOffsetY)
+        if not object.consumed then object:render(self.adjacentOffsetX, self.adjacentOffsetY) end
     end
 
     for k, entity in pairs(self.entities) do
         if not entity.dead then entity:render(self.adjacentOffsetX, self.adjacentOffsetY) end
+    end
+
+    for k, projectile in pairs(self.projectiles) do
+        if not projectile.expired then projectile:render() end
     end
 
     -- stencil out the door arches so it looks like the player is going through
@@ -261,4 +338,26 @@ function Room:render()
     --     VIRTUAL_HEIGHT - TILE_SIZE - 6, TILE_SIZE * 2, TILE_SIZE * 2 + 12)
     
     -- love.graphics.setColor(255, 255, 255, 255)
+end
+
+--[[
+    Spwans a pot inside the first entity in the entities list, then tries to get the entity unstuck from inside of it.
+]]
+function Room:debugEntityUnstuck()
+    local testEntity = self.entities[1]
+        
+    print("OLD ENTITY COORDS: "..tostring(testEntity.x) ..",".. tostring(testEntity.y))
+
+    local pot = GameObject(
+        GAME_OBJECT_DEFS['pot'],
+        testEntity.x,
+        testEntity.y
+    )
+
+    testEntity:unstuck(pot)
+
+
+    print("NEW ENTITY COORDS: "..tostring(testEntity.x) ..",".. tostring(testEntity.y))
+    print("Still Colliding?"..tostring(testEntity:collides(pot)))
+
 end

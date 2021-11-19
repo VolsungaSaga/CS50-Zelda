@@ -38,6 +38,9 @@ function Entity:init(def)
     self.flashTimer = 0
 
     self.dead = false
+
+    --Chances for object spawning. These are keys to the GAME_OBJECT_DEFS table
+    self.drop_probabilities = def.drop_probabilities
 end
 
 function Entity:createAnimations(animations)
@@ -60,6 +63,25 @@ end
 function Entity:collides(target)
     return not (self.x + self.width < target.x or self.x > target.x + target.width or
                 self.y + self.height < target.y or self.y > target.y + target.height)
+end
+
+--[[
+    Nudges the entity out of the object's hitbox.
+]]
+function Entity:unstuck(object)
+    if not self:collides(object) then
+        return
+    end
+    local diffX = -object.x + (self.x + self.width + 1)
+    local diffY = -object.y + (self.y + self.height + 1)
+
+    if math.abs(diffX) >= math.abs(diffY) then
+        self.y = self.y + diffY
+    else
+        self.x = self.x + diffX
+    end
+
+
 end
 
 function Entity:damage(dmg)
@@ -101,6 +123,24 @@ end
 
 function Entity:processAI(params, dt)
     self.stateMachine:processAI(params, dt)
+end
+
+function Entity:die(params)
+    --Sanity check for already being dead.
+    if self.dead then
+        return
+    end
+
+    local room = params.room
+    self.dead = true
+    if Gamble(30) then room:spawnHeart(self.x, self.y) end
+
+end
+
+--TODO: Generalize object dropping system.
+function Entity:dropObjects(params)
+
+    
 end
 
 function Entity:render(adjacentOffsetX, adjacentOffsetY)

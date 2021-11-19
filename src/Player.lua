@@ -16,6 +16,11 @@ function Player:update(dt)
     Entity.update(self, dt)
 end
 
+-- 
+function Player:throw(object)
+    
+end
+
 function Player:collides(target)
     local selfY, selfHeight = self.y + self.height / 2, self.height - self.height / 2
     

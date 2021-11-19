@@ -60,6 +60,39 @@ function EntityWalkState:update(dt)
             self.bumped = true
         end
     end
+
+    --Object collision checking.
+
+    for k, obj in pairs(self.dungeon.currentRoom.objects) do
+        if obj.solid then
+            local collides = self.entity:collides(obj)    
+
+            -- We already moved the entity forward (w.r.t its direction), so we just need to move it back.
+            if collides then
+                
+            
+                if self.entity.direction == 'left' then
+                    self.entity.x = self.entity.x + self.entity.walkSpeed * dt
+                    self.bumped = true
+
+                elseif self.entity.direction == 'right' then
+                    self.entity.x = self.entity.x - self.entity.walkSpeed * dt
+                    self.bumped = true
+
+                elseif self.entity.direction == 'up' then
+                    self.entity.y = self.entity.y + self.entity.walkSpeed * dt
+                    self.bumped = true
+
+                elseif self.entity.direction == 'down' then
+                    self.entity.y = self.entity.y - self.entity.walkSpeed * dt
+                    self.bumped = true
+                end
+            end
+
+        end
+    end
+
+
 end
 
 function EntityWalkState:processAI(params, dt)
@@ -93,7 +126,7 @@ function EntityWalkState:render()
     love.graphics.draw(gTextures[anim.texture], gFrames[anim.texture][anim:getCurrentFrame()],
         math.floor(self.entity.x - self.entity.offsetX), math.floor(self.entity.y - self.entity.offsetY))
     
-    -- debug code
+    -- -- debug code
     -- love.graphics.setColor(255, 0, 255, 255)
     -- love.graphics.rectangle('line', self.entity.x, self.entity.y, self.entity.width, self.entity.height)
     -- love.graphics.setColor(255, 255, 255, 255)
