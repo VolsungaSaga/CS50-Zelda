@@ -39,4 +39,7 @@ function StartState:render()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.setFont(gFonts['zelda-small'])
     love.graphics.printf('Press Enter', 0, VIRTUAL_HEIGHT / 2 + 64, VIRTUAL_WIDTH, 'center')
+    love.graphics.setFont(gFonts['small'])
+    love.graphics.printf('Controls : Press \'e\' to pick up pots!', 0, VIRTUAL_HEIGHT / 2 + 96, VIRTUAL_WIDTH, 'center')
+
 end

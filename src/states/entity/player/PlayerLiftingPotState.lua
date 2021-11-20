@@ -48,7 +48,7 @@ function PlayerLiftingPotState:enter(params)
             k_to_remove = k
             Timer.tween(0.1, {[object] = {x = self.player.x, y = self.player.y - object.width/2}})
             :finish(function ()
-                print("Picking up object: "..tostring(object))
+                --print("Picking up object: "..tostring(object))
                 gSounds['object-pickup']:play()
                 self.player.lifted_object = object
                 --We don't consider the lifted object to be part of the same room anymore, so we remove it.

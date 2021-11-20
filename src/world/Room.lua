@@ -52,7 +52,6 @@ end
 ]]
 function Room:generateEntities()
     local types = {'skeleton', 'slime', 'bat', 'ghost', 'spider'}
-    print("This room's dungeon is ..."..tostring(self.dungeon))
     for i = 1, 10 do
         local type = types[math.random(#types)]
 
